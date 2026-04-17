@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (Auth UID)
+    // Fields:
+    //   - email: string (required) - User email
+    //   - displayName: string (optional) - User name
+    //   - photoURL: string (optional) - User photo
+    //   - alert_time: string (optional) - Settings
+    //   - alerts_enabled: bool (optional) - Settings
+    //   - created_at: string (ISO date-time)
+    //
+    // Collection: records
+    // Document ID: recordId (Auto-generated)
+    // Fields:
+    //   - uid: string (required) - Owner UID
+    //   - area_id: string (required) - Area identifier
+    //   - type: string (required) - Item type (livro, curso, etc.)
+    //   - data: map (required) - Dynamic fields
+    //   - created_at: string (ISO date-time)
+    //   - updated_at: string (ISO date-time)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "rafa.araujo.27@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email']) &&
+             data.email is string &&
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('alert_time' in data) || data.alert_time is string) &&
+             (!('alerts_enabled' in data) || data.alerts_enabled is bool);
+    }
+
+    function isValidRecord(data) {
+      return data.keys().hasAll(['uid', 'area_id', 'type', 'data']) &&
+             data.uid == request.auth.uid &&
+             data.area_id is string &&
+             data.type is string &&
+             data.data is map &&
+             data.data.keys().size() > 0;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      request.resource.data.email == resource.data.email; // Email is immutable
+      allow delete: if isAdmin();
+    }
+
+    match /records/{recordId} {
+      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidRecord(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin()) && 
+                      isValidRecord(request.resource.data) &&
+                      request.resource.data.uid == resource.data.uid; // Cannot transfer ownership
+      allow delete: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+    }
+  }
+}

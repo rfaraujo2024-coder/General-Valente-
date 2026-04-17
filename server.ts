@@ -291,7 +291,8 @@ if (!seeded) {
       { titulo: 'Comprar Primeiro Instrumento', status: 'Planejado' },
       { titulo: 'Praticar Regularmente', status: 'A Começar' }
     ].map(d => ({ area_id: 'hobbies', type: 'meta', data: JSON.stringify(d) })),
-    { area_id: 'hobbies', type: 'projeto', data: JSON.stringify({ titulo: 'Aprender Música', beneficio: 'Expressão, relaxamento, social', prazo: '3 meses' }) }
+    { area_id: 'hobbies', type: 'projeto', data: JSON.stringify({ titulo: 'Aprender Música', beneficio: 'Expressão, relaxamento, social', prazo: '3 meses' }) },
+    { area_id: 'notas', type: 'nota', data: JSON.stringify({ titulo: 'Bem-vindo ao Bloco de Notas', conteudo: 'Este é o seu novo espaço para ideias, lembretes e estudos. Você pode categorizar suas notas e fixar as mais importantes.', categoria: 'Geral', status: 'Fixado' }) }
   ];
 
   const insert = db.prepare("INSERT INTO generic_records (area_id, type, data) VALUES (?, ?, ?)");

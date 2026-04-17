@@ -20,14 +20,20 @@ import StreakCalendar from './StreakCalendar';
 interface DynamicChartProps {
   config: AreaConfig;
   records: GenericRecord[];
+  selectedType: string;
   onFilterRequest?: (filters: any, type?: string) => void;
 }
 
-export default function DynamicChart({ config, records, onFilterRequest }: DynamicChartProps) {
+export default function DynamicChart({ config, records, selectedType, onFilterRequest }: DynamicChartProps) {
   const [hiddenSegments, setHiddenSegments] = useState<string[]>([]);
   const COLORS = [config.cor, '#00d4ff', '#8b5cf6', '#ec4899', '#f59e0b', '#ef4444'];
 
-  if (records.length === 0) {
+  const typeRecords = React.useMemo(() => {
+    return records.filter(r => r.type === selectedType);
+  }, [records, selectedType]);
+
+  if (typeRecords.length === 0) {
+    // ...
     return (
       <div className="flex flex-col items-center justify-center h-[400px] bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
         <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
@@ -49,14 +55,14 @@ export default function DynamicChart({ config, records, onFilterRequest }: Dynam
   // Data for Bar Chart (Status/Category)
   const barData = config.colunasKanban.map(col => ({
     name: col,
-    count: records.filter(r => {
+    count: typeRecords.filter(r => {
       const status = r.data.status || r.data.tipo || r.data.categoria;
       return status === col;
     }).length
   }));
 
   // Data for Line Chart (Temporal Evolution)
-  const lineData = records
+  const lineData = typeRecords
     .filter(r => r.data.data || r.created_at)
     .map(r => ({
       date: new Date(r.data.data || r.created_at).toLocaleDateString('pt-BR'),
@@ -183,9 +189,10 @@ export default function DynamicChart({ config, records, onFilterRequest }: Dynam
       )}
 
       {/* Streak Calendars for Habits */}
-      {records.filter(r => r.type === 'habito').map(habit => (
-        <div key={habit.id} className="lg:col-span-2">
+      {typeRecords.filter(r => r.type === 'habito').map(habit => (
+        <div key={habit.id} className="lg:col-span-1">
           <StreakCalendar 
+            name={habit.data.nome}
             streak={habit.data.streakAtual || 0} 
             color={config.cor} 
           />

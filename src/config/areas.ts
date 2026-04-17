@@ -363,5 +363,24 @@ export const CONFIG_AREAS: AreaConfig[] = [
     colunasKanban: ['Ideia', 'Praticando', 'Mestre'],
     views: ['Dashboard', 'Tabela', 'Calendário', 'Kanban', 'Metas'],
     graficos: ['linha', 'barras']
+  },
+  {
+    id: 'notas',
+    nome: 'Bloco de Notas',
+    icon: '📝',
+    cor: '#94a3b8',
+    tiposItem: ['nota'],
+    campos: {
+      nota: [
+        { nome: 'titulo', label: 'Título', tipo: 'text', required: true },
+        { nome: 'conteudo', label: 'Conteúdo', tipo: 'textarea', required: true },
+        { nome: 'categoria', label: 'Categoria', tipo: 'select', options: ['Geral', 'Ideia', 'Importante', 'Lembrete', 'Estudo', 'Trabalho'] },
+        { nome: 'data', label: 'Data', tipo: 'date' },
+        { nome: 'status', label: 'Status', tipo: 'select', options: ['Ativo', 'Arquivado', 'Fixado'] }
+      ]
+    },
+    colunasKanban: ['Ativo', 'Arquivado', 'Fixado'],
+    views: ['Tabela', 'Kanban'],
+    graficos: []
   }
 ];

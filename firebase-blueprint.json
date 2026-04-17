@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "alert_time": { "type": "string" },
+        "alerts_enabled": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email"]
+    },
+    "Record": {
+      "title": "Generic Record",
+      "description": "Any record associated with an area (tasks, habits, notes, etc.)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user ID owner of this record" },
+        "area_id": { "type": "string" },
+        "type": { "type": "string" },
+        "data": { "type": "object" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "area_id", "type", "data"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "records/{recordId}": {
+      "schema": "Record",
+      "description": "All application records filtered by user UID"
+    }
+  }
+}

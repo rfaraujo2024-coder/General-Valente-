@@ -7,13 +7,14 @@ import DynamicKanban from './dynamic/DynamicKanban';
 import DynamicChart from './dynamic/DynamicChart';
 import DynamicCalendar from './dynamic/DynamicCalendar';
 import DynamicGoals from './dynamic/DynamicGoals';
+import { useRecords } from '../hooks/useRecords';
 
 interface AreaViewProps {
   config: AreaConfig;
 }
 
 export default function AreaView({ config }: AreaViewProps) {
-  const [records, setRecords] = useState<GenericRecord[]>([]);
+  const { records, addRecord, updateRecord, removeRecord } = useRecords(config.id);
   const [activeView, setActiveView] = useState(config.views[0]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<GenericRecord | null>(null);
@@ -25,17 +26,10 @@ export default function AreaView({ config }: AreaViewProps) {
   }>({});
 
   useEffect(() => {
-    fetchRecords();
     setActiveView(config.views[0]);
     setSelectedType(config.tiposItem[0]);
     setExternalFilters({});
   }, [config]);
-
-  const fetchRecords = async () => {
-    const res = await fetch(`/api/records/${config.id}`);
-    const data = await res.json();
-    setRecords(data);
-  };
 
   const handleFilterRequest = (filters: any, type?: string) => {
     if (type) setSelectedType(type);
@@ -55,38 +49,53 @@ export default function AreaView({ config }: AreaViewProps) {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string | number) => {
     if (confirm('Deseja realmente excluir este registro?')) {
-      await fetch(`/api/records/${id}`, { method: 'DELETE' });
-      fetchRecords();
+      await removeRecord(String(id));
     }
   };
 
   const handleSubmit = async (formData: any) => {
-    const method = editingRecord ? 'PUT' : 'POST';
-    const url = editingRecord ? `/api/records/${editingRecord.id}` : '/api/records';
-    
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    if (editingRecord) {
+      await updateRecord(String(editingRecord.id), {
+        data: formData
+      });
+    } else {
+      await addRecord({
         area_id: config.id,
         type: selectedType,
         data: formData
-      })
-    });
+      });
+    }
 
     setIsModalOpen(false);
-    fetchRecords();
   };
+
+  const handleStatusChange = async (record: GenericRecord, newStatus: string) => {
+    const statusFieldName = getStatusField(config);
+    const updatedData = { ...record.data, [statusFieldName]: newStatus };
+    
+    await updateRecord(String(record.id), {
+      data: updatedData
+    });
+  };
+
+  function getStatusField(cfg: AreaConfig) {
+    for (const type of cfg.tiposItem) {
+      const field = cfg.campos[type].find(f => f.tipo === 'select' && f.options?.some(opt => cfg.colunasKanban.includes(opt)));
+      if (field) return field.nome;
+    }
+    return 'status';
+  }
 
   const renderView = () => {
     switch (activeView) {
-      case 'Dashboard': return <DynamicChart config={config} records={records} onFilterRequest={handleFilterRequest} />;
+      case 'Dashboard': return <DynamicChart config={config} records={records} selectedType={selectedType} onFilterRequest={handleFilterRequest} />;
       case 'Tabela': return (
         <DynamicTable 
           fields={config.campos[selectedType] || []} 
           records={records} 
+          selectedType={selectedType}
           onEdit={handleEdit} 
           onDelete={handleDelete} 
           color={config.cor}
@@ -94,9 +103,27 @@ export default function AreaView({ config }: AreaViewProps) {
           onFiltersChange={setExternalFilters}
         />
       );
-      case 'Calendário': return <DynamicCalendar config={config} records={records} />;
-      case 'Kanban': return <DynamicKanban config={config} records={records} onEdit={handleEdit} onDelete={handleDelete} onAdd={handleAdd} />;
-      case 'Metas': return <DynamicGoals config={config} records={records} />;
+      case 'Calendário': return <DynamicCalendar config={config} records={records} selectedType={selectedType} />;
+      case 'Kanban': return (
+        <DynamicKanban 
+          config={config} 
+          records={records} 
+          selectedType={selectedType}
+          onEdit={handleEdit} 
+          onDelete={handleDelete} 
+          onAdd={handleAdd} 
+          onStatusChange={handleStatusChange}
+        />
+      );
+      case 'Metas': return (
+        <DynamicGoals 
+          config={config} 
+          records={records} 
+          selectedType={selectedType} 
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      );
       default: return null;
     }
   };

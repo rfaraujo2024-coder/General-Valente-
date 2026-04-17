@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Bell, User, Zap, Target, Clock } from 'lucide-react';
+import { Save, Bell, User, Zap, Target, Clock, Loader2 } from 'lucide-react';
+import { useAuth } from './AuthContext';
+import { db, doc, getDoc, setDoc } from '../firebase';
 
 export default function Settings() {
+  const { user } = useAuth();
   const [settings, setSettings] = useState<any>({
-    name: '',
+    displayName: '',
     phrase: '',
     start_date: '',
     supreme_goal: '',
@@ -17,26 +20,39 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(res => res.json())
-      .then(data => {
-        setSettings({
-          ...data,
-          priorities: typeof data.priorities === 'string' ? JSON.parse(data.priorities) : data.priorities || [],
-          alarms: typeof data.alarms === 'string' ? JSON.parse(data.alarms) : data.alarms || []
-        });
+    if (!user) return;
+
+    const fetchSettings = async () => {
+      try {
+        const docRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setSettings({
+            ...settings,
+            ...data,
+            displayName: data.displayName || user.displayName || '',
+            email: data.email || user.email || ''
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+      } finally {
         setLoading(false);
-      });
-  }, []);
+      }
+    };
+
+    fetchSettings();
+  }, [user]);
 
   const handleSave = async () => {
+    if (!user) return;
     setSaving(true);
     try {
-      await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
-      });
+      await setDoc(doc(db, 'users', user.uid), {
+        ...settings,
+        updated_at: new Date().toISOString()
+      }, { merge: true });
       alert('Configurações salvas com sucesso!');
     } catch (error) {
       console.error(error);
@@ -75,8 +91,8 @@ export default function Settings() {
               <label className="block text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-2">Nome_De_Guerra</label>
               <input
                 type="text"
-                value={settings.name}
-                onChange={e => setSettings({ ...settings, name: e.target.value })}
+                value={settings.displayName}
+                onChange={e => setSettings({ ...settings, displayName: e.target.value })}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#00ff9d] outline-none transition-all"
               />
             </div>
@@ -168,6 +184,60 @@ export default function Settings() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* Data Migration */}
+        <section className="col-span-full bg-black/40 backdrop-blur-xl border border-white/10 p-8 rounded-3xl space-y-6">
+          <div className="flex items-center gap-3 text-[#00ff9d] mb-2">
+            <Zap size={20} />
+            <h3 className="font-mono text-xs font-bold uppercase tracking-widest">Migração_De_Dados</h3>
+          </div>
+          <p className="text-gray-400 text-xs">
+            Se você já utilizava o sistema anteriormente (offline), pode migrar seus registros locais para sua conta segura na nuvem.
+          </p>
+          <button
+            onClick={async () => {
+              if (!confirm('Deseja migrar seus dados locais para o Firebase? Isso pode duplicar itens se já tiverem sido migrados.')) return;
+              try {
+                const res = await fetch('/api/records-all');
+                const localRecords = await res.json();
+                
+                if (!localRecords || localRecords.length === 0) {
+                  alert('Nenhum dado local encontrado para migrar.');
+                  return;
+                }
+
+                alert(`Iniciando migração de ${localRecords.length} registros...`);
+                
+                const { collection, addDoc, db: firestoreDb } = await import('../firebase');
+                
+                let successCount = 0;
+                for (const record of localRecords) {
+                  try {
+                    await addDoc(collection(firestoreDb, 'records'), {
+                      area_id: record.area_id,
+                      type: record.type,
+                      data: record.data,
+                      uid: user.uid,
+                      created_at: record.created_at || new Date().toISOString(),
+                      updated_at: record.updated_at || new Date().toISOString()
+                    });
+                    successCount++;
+                  } catch (e) {
+                    console.error('Erro ao migrar item:', e);
+                  }
+                }
+                
+                alert(`Migração concluída! ${successCount} de ${localRecords.length} registros migrados com sucesso.`);
+              } catch (error) {
+                console.error('Erro na migração:', error);
+                alert('Erro durante a migração.');
+              }
+            }}
+            className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-mono font-bold text-white hover:bg-[#00ff9d]/20 hover:border-[#00ff9d]/50 transition-all uppercase tracking-widest"
+          >
+            Migrar_Registros_Locais_Para_Nuvem
+          </button>
         </section>
       </div>
     </div>

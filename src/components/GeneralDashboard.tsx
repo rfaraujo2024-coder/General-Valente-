@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Radar, 
   RadarChart, 
@@ -15,45 +15,47 @@ import {
 } from 'recharts';
 import { CONFIG_AREAS } from '../config/areas';
 import { GenericRecord } from '../types';
-import { Award, Zap, Target, TrendingUp } from 'lucide-react';
+import { Award, Zap, Target, TrendingUp, Plus } from 'lucide-react';
+import { useRecords } from '../hooks/useRecords';
+import { useAuth } from './AuthContext';
+import { db, doc, onSnapshot as onSnapshotFirestore } from '../firebase';
 
 interface GeneralDashboardProps {
   onNavigate?: (areaId: string) => void;
 }
 
 export default function GeneralDashboard({ onNavigate }: GeneralDashboardProps) {
-  const [allRecords, setAllRecords] = useState<GenericRecord[]>([]);
-  const [settings, setSettings] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { records: allRecords, loading: recordsLoading } = useRecords();
+  const [userSettings, setUserSettings] = useState<any>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      fetch('/api/records-all').then(res => res.ok ? res.json() : []),
-      fetch('/api/settings').then(res => res.ok ? res.json() : null)
-    ]).then(([records, settingsData]) => {
-      setAllRecords(records || []);
-      setSettings(settingsData);
-    }).catch(err => {
-      console.error("Erro ao carregar dados:", err);
-    }).finally(() => {
-      setLoading(false);
+  React.useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshotFirestore(doc(db, 'users', user.uid), (doc) => {
+      if (doc.exists()) {
+        setUserSettings(doc.data());
+      }
+      setSettingsLoading(false);
     });
-  }, []);
+    return () => unsub();
+  }, [user]);
+
+  const loading = recordsLoading || settingsLoading;
 
   // Calculate scores per area (0-100)
   const areaScores = CONFIG_AREAS.map(area => {
-    const records = allRecords.filter(r => r.area_id === area.id);
-    if (records.length === 0) return { id: area.id, name: area.nome, score: 0, full: 100, color: area.cor, count: 0 };
+    const areaRecords = allRecords.filter(r => r.area_id === area.id);
+    if (areaRecords.length === 0) return { id: area.id, name: area.nome, score: 0, full: 100, color: area.cor, count: 0 };
     
     // Simple score logic: % of items that are "Done/Lido/Concluido"
-    const completed = records.filter(r => {
+    const completed = areaRecords.filter(r => {
       const status = r.data.status || r.data.tipo || r.data.categoria;
       return ['Lido', 'Concluído', 'Finalizado', 'Realizado', 'Pago', 'Feito', 'Mestre'].includes(status);
     }).length;
     
-    const score = Math.round((completed / records.length) * 100);
-    return { id: area.id, name: area.nome, score: score || 20, full: 100, color: area.cor, count: records.length }; // Min 20 for visual
+    const score = Math.round((completed / areaRecords.length) * 100);
+    return { id: area.id, name: area.nome, score: score || 20, full: 100, color: area.cor, count: areaRecords.length }; // Min 20 for visual
   });
 
   const overallScore = Math.round(areaScores.reduce((acc, curr) => acc + curr.score, 0) / areaScores.length);
@@ -86,7 +88,7 @@ export default function GeneralDashboard({ onNavigate }: GeneralDashboardProps) 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Meta Suprema */}
-      {settings?.supreme_goal && (
+      {userSettings?.supreme_goal && (
         <div className="bg-gradient-to-r from-[#00ff9d]/10 to-transparent border border-[#00ff9d]/20 p-8 rounded-3xl relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-5">
             <Award size={120} className="text-[#00ff9d]" />
@@ -94,7 +96,7 @@ export default function GeneralDashboard({ onNavigate }: GeneralDashboardProps) 
           <div className="relative z-10">
             <p className="text-[10px] font-mono font-bold text-[#00ff9d] uppercase tracking-[0.5em] mb-4">Meta_Suprema_2026</p>
             <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight max-w-3xl">
-              "{settings.supreme_goal}"
+              "{userSettings.supreme_goal}"
             </h2>
           </div>
         </div>
@@ -214,6 +216,118 @@ export default function GeneralDashboard({ onNavigate }: GeneralDashboardProps) 
           </button>
         ))}
       </div>
+
+      {/* Tarefas do Dia por Área */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-6 bg-[#00ff9d] rounded-full" />
+          <h3 className="text-sm font-mono font-bold tracking-[0.3em] text-white uppercase">Tarefas_Do_Dia_Por_Área</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {CONFIG_AREAS.map(area => {
+            const areaTasks = allRecords.filter(r => 
+              r.area_id === area.id && 
+              (r.type === 'tarefa' || r.type === 'projeto' || r.type === 'meta' || r.type === 'acao') &&
+              r.data.status !== 'Concluído' && 
+              r.data.status !== 'Finalizado' &&
+              r.data.status !== 'Feito'
+            );
+
+            if (areaTasks.length === 0) return null;
+
+            return (
+              <div key={area.id} className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 hover:border-white/20 transition-all flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-xl">{area.icon}</span>
+                  <h4 className="text-xs font-mono font-bold text-white uppercase tracking-widest">{area.nome}</h4>
+                  <span className="ml-auto text-[10px] font-mono text-gray-500">{areaTasks.length}</span>
+                </div>
+                
+                <div className="space-y-3 flex-1">
+                  {areaTasks.slice(0, 3).map((task, idx) => (
+                    <div key={idx} className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/5 group hover:border-white/10 transition-all">
+                      <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: area.cor }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-200 truncate">
+                          {task.data.titulo || task.data.nome || task.data.projeto || task.data.item}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[8px] font-mono text-gray-500 uppercase tracking-widest">{task.data.status || 'Pendente'}</span>
+                          {task.data.deadline && (
+                            <span className="text-[8px] font-mono text-amber-500/70 uppercase tracking-widest">
+                              {new Date(task.data.deadline).toLocaleDateString('pt-BR')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {areaTasks.length > 3 && (
+                    <button 
+                      onClick={() => onNavigate?.(area.id)}
+                      className="w-full py-2 text-[9px] font-mono text-gray-500 hover:text-white uppercase tracking-widest transition-colors"
+                    >
+                      + {areaTasks.length - 3} outras tarefas
+                    </button>
+                  )}
+                </div>
+                
+                <button 
+                  onClick={() => onNavigate?.(area.id)}
+                  className="mt-4 w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[9px] font-mono font-bold text-gray-400 hover:text-white uppercase tracking-[0.2em] transition-all"
+                >
+                  Gerenciar Área
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Bloco de Notas Rápido */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-6 bg-[#94a3b8] rounded-full" />
+          <h3 className="text-sm font-mono font-bold tracking-[0.3em] text-white uppercase">Bloco_De_Notas_Recentes</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {allRecords
+            .filter(r => r.area_id === 'notas')
+            .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+            .slice(0, 4)
+            .map((note, idx) => (
+              <button 
+                key={idx}
+                onClick={() => onNavigate?.('notas')}
+                className="bg-black/40 backdrop-blur-xl border border-white/10 p-5 rounded-2xl hover:border-white/20 transition-all text-left group"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <span className="text-[8px] font-mono text-[#94a3b8] uppercase tracking-widest">{note.data.categoria || 'Nota'}</span>
+                  {note.data.status === 'Fixado' && <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />}
+                </div>
+                <h4 className="text-xs font-bold text-gray-200 mb-2 group-hover:text-white transition-colors truncate">{note.data.titulo}</h4>
+                <p className="text-[10px] font-mono text-gray-500 line-clamp-3 leading-relaxed">
+                  {note.data.conteudo}
+                </p>
+                <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
+                  <span className="text-[8px] font-mono text-gray-600 uppercase">
+                    {new Date(note.created_at || '').toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+              </button>
+            ))}
+          
+          <button 
+            onClick={() => onNavigate?.('notas')}
+            className="bg-white/5 border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all min-h-[160px]"
+          >
+            <Plus size={24} />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest">Nova_Nota</span>
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

@@ -76,7 +76,7 @@ export interface AreaConfig {
 }
 
 export interface GenericRecord {
-  id: number;
+  id: string | number;
   area_id: string;
   type: string;
   data: any;

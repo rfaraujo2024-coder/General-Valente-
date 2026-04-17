@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { AreaField, GenericRecord } from '../../types';
-import { Edit2, Trash2, Search, Filter, ChevronDown, X } from 'lucide-react';
+import { Edit2, Trash2, Search, Filter, ChevronDown, X, FileText, Paperclip, ExternalLink } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface DynamicTableProps {
   fields: AreaField[];
   records: GenericRecord[];
+  selectedType: string;
   onEdit: (record: GenericRecord) => void;
   onDelete: (id: number) => void;
   color: string;
@@ -19,6 +21,7 @@ interface DynamicTableProps {
 export default function DynamicTable({ 
   fields, 
   records, 
+  selectedType,
   onEdit, 
   onDelete, 
   color,
@@ -29,10 +32,15 @@ export default function DynamicTable({
   const statusFilter = externalFilters?.statusFilter || [];
   const categoryFilter = externalFilters?.categoryFilter || [];
   const [sortBy, setSortBy] = useState('recent');
+  const [noteModal, setNoteModal] = useState<{ record: GenericRecord | null, isOpen: boolean }>({ record: null, isOpen: false });
 
   const setSearchTerm = (val: string) => onFiltersChange?.({ ...externalFilters, searchTerm: val });
   const setStatusFilter = (val: string[]) => onFiltersChange?.({ ...externalFilters, statusFilter: val });
   const setCategoryFilter = (val: string[]) => onFiltersChange?.({ ...externalFilters, categoryFilter: val });
+
+  const typeRecords = useMemo(() => {
+    return records.filter(r => r.type === selectedType);
+  }, [records, selectedType]);
 
   const getProgress = (record: GenericRecord) => {
     if (record.data.totalPaginas && record.data.paginaAtual !== undefined) {
@@ -71,7 +79,7 @@ export default function DynamicTable({
   };
 
   const filteredRecords = useMemo(() => {
-    let result = [...records];
+    let result = [...typeRecords];
 
     // Search
     if (searchTerm) {
@@ -128,19 +136,19 @@ export default function DynamicTable({
 
   const availableStatuses = useMemo(() => {
     const statuses = new Set<string>();
-    records.forEach(r => {
+    typeRecords.forEach(r => {
       if (r.data.status) statuses.add(r.data.status);
     });
     return Array.from(statuses);
-  }, [records]);
+  }, [typeRecords]);
 
   const availableCategories = useMemo(() => {
     const categories = new Set<string>();
-    records.forEach(r => {
+    typeRecords.forEach(r => {
       if (r.data.categoria) categories.add(r.data.categoria);
     });
     return Array.from(categories);
-  }, [records]);
+  }, [typeRecords]);
 
   const renderValue = (field: AreaField, value: any, record: GenericRecord) => {
     if (field.tipo === 'progress') {
@@ -176,7 +184,36 @@ export default function DynamicTable({
       return value ? '✅' : '❌';
     }
 
+    if (field.tipo === 'textarea') {
+      return <span className="text-gray-500 italic truncate max-w-[150px] inline-block">{value || '---'}</span>;
+    }
+
+    if (field.tipo === 'url' && value) {
+      return (
+        <a href={value} target="_blank" rel="noreferrer" className="text-[#00ff9d] hover:underline flex items-center gap-1">
+          Link <ExternalLink size={10} />
+        </a>
+      );
+    }
+
     return value || '---';
+  };
+
+  const handleSaveNote = async (record: GenericRecord, note: string) => {
+    const updatedData = { ...record.data, notas: note };
+    await fetch(`/api/records/${record.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        area_id: record.area_id,
+        type: record.type,
+        data: updatedData
+      })
+    });
+    setNoteModal({ record: null, isOpen: false });
+    // Note: We should ideally refresh records here, but AreaView handles it if we trigger a refresh.
+    // For now, let's assume the user will see the update on next load or we can add a callback.
+    window.location.reload(); // Simple way to refresh for now
   };
 
   const hasActiveFilters = searchTerm || statusFilter.length > 0 || categoryFilter.length > 0 || sortBy !== 'recent';
@@ -324,15 +361,31 @@ export default function DynamicTable({
                       </td>
                     ))}
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => setNoteModal({ record, isOpen: true })}
+                          title="Bloco de Notas"
+                          className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-amber-500 transition-colors"
+                        >
+                          <FileText size={16} />
+                        </button>
+                        <button 
+                          onClick={() => alert('Funcionalidade de upload de arquivos em desenvolvimento para este registro.')}
+                          title="Anexar Arquivo"
+                          className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-blue-400 transition-colors"
+                        >
+                          <Paperclip size={16} />
+                        </button>
                         <button 
                           onClick={() => onEdit(record)}
+                          title="Editar"
                           className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-[#00ff9d] transition-colors"
                         >
                           <Edit2 size={16} />
                         </button>
                         <button 
                           onClick={() => onDelete(record.id)}
+                          title="Excluir"
                           className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-red-500 transition-colors"
                         >
                           <Trash2 size={16} />
@@ -353,6 +406,57 @@ export default function DynamicTable({
           </table>
         </div>
       </div>
+
+      {/* Note Modal */}
+      <AnimatePresence>
+        {noteModal.isOpen && noteModal.record && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-[#0a0a0a] border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
+                <div>
+                  <h3 className="text-sm font-mono font-bold text-white uppercase tracking-widest">
+                    Bloco de Notas: {noteModal.record.data.titulo || noteModal.record.data.nome}
+                  </h3>
+                  <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mt-1">Registro #{noteModal.record.id}</p>
+                </div>
+                <button onClick={() => setNoteModal({ record: null, isOpen: false })} className="p-2 hover:bg-white/10 rounded-xl text-gray-500 hover:text-white transition-all">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6">
+                <textarea
+                  defaultValue={noteModal.record.data.notas || ''}
+                  id="note-textarea"
+                  placeholder="Escreva suas notas, resumos ou informações importantes aqui..."
+                  className="w-full h-64 bg-white/5 border border-white/10 rounded-2xl p-4 text-gray-200 font-mono text-sm focus:border-amber-500/50 outline-none transition-all resize-none"
+                />
+                <div className="flex justify-end gap-4 mt-6">
+                  <button 
+                    onClick={() => setNoteModal({ record: null, isOpen: false })}
+                    className="px-6 py-2 rounded-xl font-mono text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const note = (document.getElementById('note-textarea') as HTMLTextAreaElement).value;
+                      handleSaveNote(noteModal.record!, note);
+                    }}
+                    className="px-8 py-2 rounded-xl bg-amber-500 text-black font-bold text-[10px] uppercase tracking-widest hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20"
+                  >
+                    Salvar Notas
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

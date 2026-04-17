@@ -1,13 +1,18 @@
 import React from 'react';
 import { GenericRecord, AreaConfig } from '../../types';
-import { Target, TrendingUp, Award } from 'lucide-react';
+import { Target, TrendingUp, Award, Edit2, Trash2 } from 'lucide-react';
 
 interface DynamicGoalsProps {
   config: AreaConfig;
   records: GenericRecord[];
+  selectedType: string;
+  onEdit: (record: GenericRecord) => void;
+  onDelete: (id: string | number) => void;
 }
 
-export default function DynamicGoals({ config, records }: DynamicGoalsProps) {
+export default function DynamicGoals({ config, records, selectedType, onEdit, onDelete }: DynamicGoalsProps) {
+  const typeRecords = records.filter(r => r.type === selectedType);
+
   const getProgress = (record: GenericRecord) => {
     if (record.data.totalPaginas && record.data.paginaAtual !== undefined) {
       return Math.min(100, Math.round((record.data.paginaAtual / record.data.totalPaginas) * 100));
@@ -34,7 +39,7 @@ export default function DynamicGoals({ config, records }: DynamicGoalsProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {records.map((record) => {
+      {typeRecords.map((record) => {
         const progress = getProgress(record);
         const progressColor = getProgressColor(progress);
         return (
@@ -45,7 +50,14 @@ export default function DynamicGoals({ config, records }: DynamicGoalsProps) {
               <div className="p-2 bg-white/5 rounded-lg">
                 <Target size={18} style={{ color: progressColor }} />
               </div>
-              <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">{record.type}</span>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => onEdit(record)} className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-all">
+                  <Edit2 size={14} />
+                </button>
+                <button onClick={() => onDelete(record.id)} className="p-1.5 hover:bg-white/5 rounded-lg text-gray-500 hover:text-red-500 transition-all">
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
 
             <h4 className="text-lg font-bold text-gray-200 mb-4 truncate">
@@ -76,9 +88,9 @@ export default function DynamicGoals({ config, records }: DynamicGoalsProps) {
           </div>
         );
       })}
-      {records.length === 0 && (
+      {typeRecords.length === 0 && (
         <div className="col-span-full py-12 text-center text-gray-500 font-mono text-xs uppercase tracking-widest border border-dashed border-white/10 rounded-2xl">
-          NENHUMA_META_DEFINIDA
+          NENHUMA_META_DEFINIDA_PARA_{selectedType.toUpperCase()}
         </div>
       )}
     </div>

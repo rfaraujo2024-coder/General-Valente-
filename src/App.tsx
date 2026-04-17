@@ -4,7 +4,8 @@ import {
   Settings as SettingsIcon,
   Menu,
   X,
-  Shield,
+  LogOut,
+  User as UserIcon,
   Cpu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -12,23 +13,64 @@ import { CONFIG_AREAS } from './config/areas';
 import AreaView from './components/AreaView';
 import GeneralDashboard from './components/GeneralDashboard';
 import Settings from './components/Settings';
+import LockScreen from './components/LockScreen';
+import Login from './pages/Login';
+import { useAuth } from './components/AuthContext';
+import { db, doc, getDoc, onSnapshot } from './firebase';
 
 export default function App() {
+  const { user, loading, logout } = useAuth();
   const [activeAreaId, setActiveAreaId] = useState<string | 'dashboard' | 'settings'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [settings, setSettings] = useState<any>(null);
+  const [userSettings, setUserSettings] = useState<any>(null);
+  const [isLocked, setIsLocked] = useState(false);
 
   React.useEffect(() => {
-    fetch('/api/settings')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => setSettings(data))
-      .catch(() => setSettings(null));
-  }, [activeAreaId]); // Refresh settings when switching views
+    if (!user) return;
+
+    // Listen to user settings in Firestore
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+      if (doc.exists()) {
+        setUserSettings(doc.data());
+      }
+    });
+
+    // Check if was locked before
+    const locked = localStorage.getItem('isLocked') === 'true';
+    if (locked) setIsLocked(true);
+
+    return () => unsub();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+        <div className="w-16 h-16 border-4 border-[#00ff9d]/20 border-t-[#00ff9d] rounded-full animate-spin" />
+        <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest animate-pulse">Iniciando_Sistema...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
 
   const activeArea = CONFIG_AREAS.find(a => a.id === activeAreaId);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans flex">
+    <div className="min-h-screen bg-[#050505] text-white font-sans flex text-[13px]">
+      <AnimatePresence>
+        {isLocked && (
+          <LockScreen 
+            userName={userSettings?.displayName || user.displayName || 'Valente'} 
+            onUnlock={() => {
+              setIsLocked(false);
+              localStorage.setItem('isLocked', 'false');
+            }} 
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
       <aside 
         className={`bg-black/40 backdrop-blur-xl border-r border-white/10 transition-all duration-300 flex flex-col z-40 ${
@@ -43,10 +85,10 @@ export default function App() {
               className="flex flex-col"
             >
               <h1 className="font-bold text-xl tracking-tighter text-[#00ff9d] drop-shadow-[0_0_8px_rgba(0,255,157,0.5)]">
-                {settings?.name?.toUpperCase().replace(' ', '_') || 'VALENTE'}_OS
+                {userSettings?.displayName?.toUpperCase().split(' ')[0] || 'LIFE'}_OS
               </h1>
               <p className="text-[8px] font-mono text-gray-500 uppercase tracking-widest mt-1 truncate max-w-[160px]">
-                {settings?.phrase || 'SISTEMA_OPERACIONAL'}
+                {userSettings?.email || 'SISTEMA_ATIVO'}
               </p>
             </motion.div>
           )}
@@ -61,14 +103,14 @@ export default function App() {
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
           <button
             onClick={() => setActiveAreaId('dashboard')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group relative ${
               activeAreaId === 'dashboard' 
                 ? 'bg-[#00ff9d]/10 text-[#00ff9d] border border-[#00ff9d]/20 shadow-[0_0_15px_rgba(0,255,157,0.1)]' 
                 : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
             }`}
           >
             <LayoutDashboard size={20} className={activeAreaId === 'dashboard' ? 'text-[#00ff9d]' : 'group-hover:text-[#00ff9d] transition-colors'} />
-            {isSidebarOpen && <span className="font-mono text-sm tracking-widest uppercase">Visão Geral</span>}
+            {isSidebarOpen && <span className="font-mono text-xs tracking-widest uppercase">Visão Geral</span>}
           </button>
 
           <div className={`pt-4 pb-2 px-4 text-[9px] font-mono font-bold text-gray-600 uppercase tracking-[0.3em] ${!isSidebarOpen && 'hidden'}`}>
@@ -79,14 +121,14 @@ export default function App() {
             <button
               key={area.id}
               onClick={() => setActiveAreaId(area.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group relative ${
                 activeAreaId === area.id 
                   ? 'bg-white/10 text-white border border-white/10' 
                   : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
               }`}
             >
               <span className="text-xl w-5 flex justify-center">{area.icon}</span>
-              {isSidebarOpen && <span className="font-mono text-sm tracking-widest uppercase truncate">{area.nome}</span>}
+              {isSidebarOpen && <span className="font-mono text-xs tracking-widest uppercase truncate">{area.nome}</span>}
               {activeAreaId === area.id && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full" style={{ backgroundColor: area.cor }} />
               )}
@@ -94,7 +136,23 @@ export default function App() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-white/5 space-y-2">
+          <div className="flex items-center gap-3 px-4 py-2 mb-2 bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+             <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-white/10 ring-2 ring-[#00ff9d]/20">
+               {user.photoURL ? (
+                 <img src={user.photoURL} alt="User" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+               ) : (
+                 <div className="w-full h-full bg-blue-500 flex items-center justify-center"><UserIcon size={14} /></div>
+               )}
+             </div>
+             {isSidebarOpen && (
+               <div className="flex flex-col min-w-0">
+                 <span className="text-[10px] font-bold text-white truncate">{user.displayName}</span>
+                 <span className="text-[8px] font-mono text-gray-500 truncate uppercase mt-0.5">Sessão_Ativa</span>
+               </div>
+             )}
+          </div>
+
           <button 
             onClick={() => setActiveAreaId('settings')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
@@ -104,7 +162,17 @@ export default function App() {
             }`}
           >
             <SettingsIcon size={20} className={activeAreaId === 'settings' ? 'text-[#00d4ff]' : 'group-hover:text-[#00d4ff] transition-colors'} />
-            {isSidebarOpen && <span className="font-mono text-sm tracking-widest uppercase">Configurações</span>}
+            {isSidebarOpen && <span className="font-mono text-xs tracking-widest uppercase">Configurações</span>}
+          </button>
+
+          <button 
+            onClick={() => {
+              logout();
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-gray-500 hover:bg-red-500/10 hover:text-red-500 group"
+          >
+            <LogOut size={20} className="group-hover:text-red-500 transition-colors" />
+            {isSidebarOpen && <span className="font-mono text-xs tracking-widest uppercase">Efetuar Logout</span>}
           </button>
         </div>
       </aside>
