@@ -27,6 +27,7 @@ export default function AreaView({ config }: AreaViewProps) {
 
   useEffect(() => {
     setActiveView(config.views[0]);
+    setSelectedType(config.tiposItem[0]);
     setExternalFilters({});
   }, [config]);
 
@@ -38,7 +39,6 @@ export default function AreaView({ config }: AreaViewProps) {
 
   const handleAdd = (status?: string) => {
     setEditingRecord(null);
-    setSelectedType(config.tiposItem[0]);
     setIsModalOpen(true);
   };
 
@@ -73,7 +73,7 @@ export default function AreaView({ config }: AreaViewProps) {
   const handleStatusChange = async (record: GenericRecord, newStatus: string) => {
     const statusFieldName = getStatusField(config);
     const updatedData = { ...record.data, [statusFieldName]: newStatus };
-    
+
     await updateRecord(String(record.id), {
       data: updatedData
     });
@@ -91,12 +91,12 @@ export default function AreaView({ config }: AreaViewProps) {
     switch (activeView) {
       case 'Dashboard': return <DynamicChart config={config} records={records} selectedType={selectedType} onFilterRequest={handleFilterRequest} />;
       case 'Tabela': return (
-        <DynamicTable 
-          fields={config.campos[selectedType] || []} 
-          records={records} 
+        <DynamicTable
+          fields={config.campos[selectedType] || []}
+          records={records}
           selectedType={selectedType}
-          onEdit={handleEdit} 
-          onDelete={handleDelete} 
+          onEdit={handleEdit}
+          onDelete={handleDelete}
           color={config.cor}
           externalFilters={externalFilters}
           onFiltersChange={setExternalFilters}
@@ -104,21 +104,21 @@ export default function AreaView({ config }: AreaViewProps) {
       );
       case 'Calendário': return <DynamicCalendar config={config} records={records} selectedType={selectedType} />;
       case 'Kanban': return (
-        <DynamicKanban 
-          config={config} 
-          records={records} 
+        <DynamicKanban
+          config={config}
+          records={records}
           selectedType={selectedType}
-          onEdit={handleEdit} 
-          onDelete={handleDelete} 
-          onAdd={handleAdd} 
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onAdd={handleAdd}
           onStatusChange={handleStatusChange}
         />
       );
       case 'Metas': return (
-        <DynamicGoals 
-          config={config} 
-          records={records} 
-          selectedType={selectedType} 
+        <DynamicGoals
+          config={config}
+          records={records}
+          selectedType={selectedType}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
@@ -151,7 +151,7 @@ export default function AreaView({ config }: AreaViewProps) {
             <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">SISTEMA_OPERACIONAL_ATIVO</p>
           </div>
         </div>
-        <button 
+        <button
           onClick={() => handleAdd()}
           className="px-6 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg uppercase tracking-widest text-xs text-black"
           style={{ backgroundColor: config.cor }}
@@ -167,8 +167,8 @@ export default function AreaView({ config }: AreaViewProps) {
             key={view}
             onClick={() => setActiveView(view)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all ${
-              activeView === view 
-                ? 'bg-white/10 text-white shadow-inner' 
+              activeView === view
+                ? 'bg-white/10 text-white shadow-inner'
                 : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
           >
@@ -205,7 +205,7 @@ export default function AreaView({ config }: AreaViewProps) {
 
       {/* Modal */}
       {isModalOpen && (
-        <DynamicForm 
+        <DynamicForm
           title={editingRecord ? `EDITAR_${selectedType.toUpperCase()}` : `NOVO_${selectedType.toUpperCase()}`}
           fields={config.campos[selectedType] || []}
           initialData={editingRecord?.data}
