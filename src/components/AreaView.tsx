@@ -27,7 +27,6 @@ export default function AreaView({ config }: AreaViewProps) {
 
   useEffect(() => {
     setActiveView(config.views[0]);
-    setSelectedType(config.tiposItem[0]);
     setExternalFilters({});
   }, [config]);
 
