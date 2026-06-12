@@ -4,7 +4,7 @@ import { Plus, LayoutGrid, Table as TableIcon, Calendar as CalendarIcon, Kanban 
 import DynamicForm from './dynamic/DynamicForm';
 import DynamicTable from './dynamic/DynamicTable';
 import DynamicKanban from './dynamic/DynamicKanban';
-import DynamicChart from './dynamic/DynamicChart';h
+import DynamicChart from './dynamic/DynamicChart';
 import DynamicCalendar from './dynamic/DynamicCalendar';
 import DynamicGoals from './dynamic/DynamicGoals';
 import { useRecords } from '../hooks/useRecords';
@@ -27,7 +27,7 @@ export default function AreaView({ config }: AreaViewProps) {
 
   useEffect(() => {
     setActiveView(config.views[0]);
-
+    setSelectedType(config.tiposItem[0]);
     setExternalFilters({});
   }, [config]);
 
