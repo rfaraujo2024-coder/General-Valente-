@@ -6,7 +6,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Desenvolvimento Pessoal',
     icon: '📚',
     cor: '#3b82f6',
-    tiposItem: ['livro', 'curso', 'habito', 'meta'],
+    tiposItem: ['livro', 'curso', 'habito', 'meta', 'desafio'],
     campos: {
       livro: [
         { nome: 'titulo', label: 'Nome do Livro', tipo: 'text', required: true },
@@ -64,7 +64,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Saúde & Fitness',
     icon: '💪',
     cor: '#10b981',
-    tiposItem: ['atividade', 'medicao', 'meta', 'rotina'],
+    tiposItem: ['atividade', 'medicao', 'meta', 'rotina', 'desafio'],
     campos: {
       atividade: [
         { nome: 'atividade', label: 'Atividade', tipo: 'text', required: true },
@@ -98,7 +98,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Finanças',
     icon: '💰',
     cor: '#f59e0b',
-    tiposItem: ['transacao', 'divida', 'meta'],
+    tiposItem: ['transacao', 'divida', 'meta', 'desafio'],
     campos: {
       transacao: [
         { nome: 'descricao', label: 'Descrição', tipo: 'text', required: true },
@@ -130,7 +130,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Carreira',
     icon: '💼',
     cor: '#8b5cf6',
-    tiposItem: ['projeto', 'habilidade', 'meta'],
+    tiposItem: ['projeto', 'habilidade', 'meta', 'desafio'],
     campos: {
       projeto: [
         { nome: 'projeto', label: 'Projeto', tipo: 'text', required: true },
@@ -163,7 +163,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Relacionamentos',
     icon: '❤️',
     cor: '#ef4444',
-    tiposItem: ['interacao', 'meta', 'acao'],
+    tiposItem: ['interacao', 'meta', 'acao', 'desafio'],
     campos: {
       interacao: [
         { nome: 'pessoa', label: 'Pessoa', tipo: 'text', required: true },
@@ -191,7 +191,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Família',
     icon: '👨👩👧',
     cor: '#ec4899',
-    tiposItem: ['evento', 'meta', 'tarefa'],
+    tiposItem: ['evento', 'meta', 'tarefa', 'desafio'],
     campos: {
       evento: [
         { nome: 'titulo', label: 'Evento', tipo: 'text', required: true },
@@ -219,7 +219,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Lazer',
     icon: '🎮',
     cor: '#06b6d4',
-    tiposItem: ['atividade', 'meta'],
+    tiposItem: ['atividade', 'meta', 'desafio'],
     campos: {
       atividade: [
         { nome: 'nome', label: 'Atividade', tipo: 'text', required: true },
@@ -243,7 +243,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Espiritualidade',
     icon: '🧘',
     cor: '#6366f1',
-    tiposItem: ['pratica', 'meta'],
+    tiposItem: ['pratica', 'meta', 'desafio'],
     campos: {
       pratica: [
         { nome: 'nome', label: 'Prática', tipo: 'text', required: true },
@@ -267,7 +267,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Ambiente',
     icon: '🏡',
     cor: '#4ade80',
-    tiposItem: ['melhoria', 'tarefa', 'meta'],
+    tiposItem: ['melhoria', 'tarefa', 'meta', 'desafio'],
     campos: {
       melhoria: [
         { nome: 'item', label: 'Item/Cômodo', tipo: 'text', required: true },
@@ -294,7 +294,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Social',
     icon: '🤝',
     cor: '#f472b6',
-    tiposItem: ['evento', 'meta', 'acao'],
+    tiposItem: ['evento', 'meta', 'acao', 'desafio'],
     campos: {
       evento: [
         { nome: 'nome', label: 'Evento/Encontro', tipo: 'text', required: true },
@@ -320,7 +320,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Contribuição',
     icon: '🌍',
     cor: '#fbbf24',
-    tiposItem: ['acao', 'meta'],
+    tiposItem: ['acao', 'meta', 'desafio'],
     campos: {
       acao: [
         { nome: 'causa', label: 'Causa/Projeto', tipo: 'text', required: true },
@@ -342,7 +342,7 @@ export const CONFIG_AREAS: AreaConfig[] = [
     nome: 'Hobbies',
     icon: '🎨',
     cor: '#a78bfa',
-    tiposItem: ['atividade', 'meta', 'projeto'],
+    tiposItem: ['atividade', 'meta', 'projeto', 'desafio'],
     campos: {
       atividade: [
         { nome: 'hobby', label: 'Hobby', tipo: 'text', required: true },

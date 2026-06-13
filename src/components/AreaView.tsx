@@ -7,6 +7,7 @@ import DynamicKanban from './dynamic/DynamicKanban';
 import DynamicChart from './dynamic/DynamicChart';
 import DynamicCalendar from './dynamic/DynamicCalendar';
 import DynamicGoals from './dynamic/DynamicGoals';
+import ChallengeTracker from './dynamic/ChallengeTracker';
 import { useRecords } from '../hooks/useRecords';
 
 interface AreaViewProps {
@@ -38,6 +39,7 @@ export default function AreaView({ config }: AreaViewProps) {
   };
 
   const handleAdd = (status?: string) => {
+    if (activeView === 'Metas' && selectedType === 'desafio') return;
     setEditingRecord(null);
     setIsModalOpen(true);
   };
@@ -114,7 +116,19 @@ export default function AreaView({ config }: AreaViewProps) {
           onStatusChange={handleStatusChange}
         />
       );
-      case 'Metas': return (
+      case 'Metas':
+        if (selectedType === 'desafio') {
+        return (
+        <ChallengeTracker
+        config={config}
+        records={records}
+        onDelete={removeRecord}
+        onAdd={(data) => addRecord({ area_id: config.id, type: 'desafio', data })}
+        onUpdate={updateRecord}
+        />
+        );
+        }
+        return (
         <DynamicGoals
           config={config}
           records={records}
